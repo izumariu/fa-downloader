@@ -24,16 +24,17 @@ resp.to_s.match(%r{<b>System Message</b>})&&abort([
 ].join("\n"))
 
 $USER = FALib.extract_username_from_userpage(resp)
-$user = $USER.downcase.gsub(/[^A-Za-z0-9]/,"_")
+$user = $USER.downcase.gsub(/[^A-Za-z0-9\-]/,"_")
 puts "Extracting pictures of ~#{$USER}'s gallery."
 
+Dir.mkdir("pics") rescue nil
 Dir.mkdir("pics/#{$user}") rescue nil
 
 pagenum = 1
 
 loop do
 
-  resp = Net::HTTP.get_response URI FALib.urlencode FALib.RelativePath "/gallery/#{$USER}/#{pagenum}"
+  resp = Net::HTTP.get_response URI FALib.urlencode FALib.RelativePath "/gallery/#{$USER}/#{pagenum}/?perpage=72"
   abort("Response code was HTTP #{resp.code}") if resp.code.to_i!=200
   resp.body.match(%r{<i>There are no submissions to list</i>})&&break
   puts "Page #{pagenum}"
@@ -45,16 +46,14 @@ loop do
 
     resp2 = Net::HTTP.get_response URI FALib.urlencode link
     resp2.body.match(%r{<img[^<>]*id="submissionImg"[^<>]*>})
-    $&||(puts("Error, skipping image");next)
+    $&||(puts("Error, skipping image");puts;next)
     maxres = "http:#{ $&.match(%r{data-fullview-src="([^"]+)"})[-1] }"
-    maxres.split("/")[-1].match %r{^\d+\.(.+)$}
-    $~[1].match(/^#{$user}_(.+)$/)
-    filename = $~[1]
+    filename = maxres.split("/")[-1][%r{^\d+\.(.+)$},1][/^#{$user}_(.+)$/,1]
 
-    File.exists?("pics/#{$user}/#{filename}")&&(puts("File #{maxres} exists, skipping");next)
+    File.exists?("pics/#{$user}/#{filename}")&&(puts("File #{maxres} exists, skipping");puts;next)
 
     content = Net::HTTP.get_response URI FALib.urlencode maxres
-    content.code.to_i==200||(puts("GET Content returned HTTP #{content.code}, skipping image\n");next)
+    content.code.to_i==200||(puts("GET Content returned HTTP #{content.code}, skipping image");puts;next)
 
     File.write("pics/#{$user}/#{filename}",content.body)
     puts "#{maxres} => pics/#{$user}/#{filename}"

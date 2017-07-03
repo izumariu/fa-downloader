@@ -27,7 +27,7 @@ module FALib
   end
 
   def self.urlencode(url)
-    url.bytes.map(&:chr).map{|i| i.inspect.match(/\\x[A-F0-9]{2}/) ? ("%%%02x" % i.ord).upcase : i }.join
+    url.bytes.map(&:chr).map{|i| i.inspect[/\\x[A-F0-9]{2}|[\[\]\(\)\{\}]/] ? ("%%%02x" % i.ord).upcase : i }.join
   end
 
 end
